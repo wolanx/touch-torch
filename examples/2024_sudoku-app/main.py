@@ -6,6 +6,7 @@ from files.sudoku import sudoku_init, sudoku_run
 
 
 def unname(ctx):
+    # 1. 初始化数组1
     arr1 = [[0 for _ in range(9)] for _ in range(9)]
 
     for i in range(9):
@@ -18,6 +19,7 @@ def unname(ctx):
 
             if len(res):
                 value = res[0][-1]
+                # 修正识别不准问题，orc对纯数字并不友好
                 if value == "00":
                     value = "8"
                 if value == "07":
@@ -30,10 +32,12 @@ def unname(ctx):
     pprint(arr1)
     arr2 = copy.deepcopy(arr1)
 
+    # 3. 通过算法求解后存入数组2
     x, y = sudoku_init(arr2)
     sudoku_run(arr2, x, y)
     pprint(arr2)
 
+    # 4. 遍历数组2，先点击格子，再点击待填入数
     for i in range(9):
         for j in range(9):
             if arr1[i][j] == 0:
@@ -45,9 +49,11 @@ def unname(ctx):
                 x = 120 + 72 * j + 6 + 72 / 2
                 y = 384 + 72 * i + 6 + 72 / 2
 
+                # 先点击格子
                 T.click(x=x, y=y, unit="px")
                 T.sleep(0.5)
 
+                # 再点击待填入数
                 match vInt:
                     case 1 | 2 | 3:
                         T.clickByText(search=vStr, crop={"unit": "%", "x": 0, "y": 92, "width": 33, "height": 8})
