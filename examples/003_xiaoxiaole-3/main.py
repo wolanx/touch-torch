@@ -2,13 +2,10 @@ from pprint import pprint
 
 import numpy as np
 
-from files.xxl_algo import xxl_find
+from files.xxl_algo import xxl_find_actions, xxl_rec_rect
 
 
-def unname(ctx):
-    # T.drag(points=[(70, 51), (82, 51)], unit="%", duration=0.5)
-    # T.sleep(2)
-
+def do_move(ctx):
     cropMain = {"unit": "%", "x": 0, "y": 20, "width": 100, "height": 60}
 
     colorR = T.findImg("red.png", crop=cropMain)
@@ -16,72 +13,67 @@ def unname(ctx):
     colorB = T.findImg("blue.png", crop=cropMain)
     colorY = T.findImg("yellow.png", crop=cropMain)
     color5 = T.findImg("brown.png", crop=cropMain)
+    # color6 = 紫色、五彩鸟、特效鸟等 todo
 
-    print(len(colorR), colorR)
-    print(len(colorG), colorG)
-    print(len(colorB), colorB)
-    print(len(colorY), colorY)
-    print(len(color5), color5)
+    # 找出所有的方块，得出行列数
+    rects = xxl_rec_rect(T.getScreenshot())
+    tb = T.tool.cv2.GridRound(rects)
+    rows, cols = tb.getShape()
+    print(f"rows={rows} cols={cols}", flush=True)
 
-    # for r in res:
-    #     points = [(r.x, r.y), (r.x + 50, r.y)]
-    #     T.drag(points, unit="px", duration=0.5)
-    #     T.sleep(2)
+    # 行列数初始化二维数组
+    arr2 = np.zeros((rows, cols), dtype=int)
 
-    colorX = colorR + colorG + colorB + colorY
-    colX, colY = [one.x for one in colorX], [one.y for one in colorX]
-    # 这里偷懒了，可能会有误差。可以手动取点后，计算网格位置
-    step = (np.max(colX) - np.min(colX)) / 9
-    colX, colY = [int(i // step * step + step / 2) for i in colX], [int(i // step * step + step / 2) for i in colY]  # 正则化误差，将值就近到倍数值上
-    colX, colY = np.array(sorted(set(colX))), np.array(sorted(set(colY)))  # 去重，排序
-
-    # 初始化二维数组
-    arr2 = [[0 for _ in range(len(colX))] for _ in range(len(colY))]
-    # pprint(arr2)
-
-    # 将颜色写入二维数组 红1绿2蓝3黄4棕5
+    # 将颜色(红1绿2蓝3黄4棕5)对应的编号，填入二维数组
     for p in colorR:
-        xi, yi = (np.abs(colX - p.x)).argmin().item(), (np.abs(colY - p.y)).argmin().item()
+        xi, yi = tb.findIdx(p.x, p.y)
         arr2[yi][xi] = 1
     for p in colorG:
-        xi, yi = (np.abs(colX - p.x)).argmin().item(), (np.abs(colY - p.y)).argmin().item()
+        xi, yi = tb.findIdx(p.x, p.y)
         arr2[yi][xi] = 2
     for p in colorB:
-        xi, yi = (np.abs(colX - p.x)).argmin().item(), (np.abs(colY - p.y)).argmin().item()
+        xi, yi = tb.findIdx(p.x, p.y)
         arr2[yi][xi] = 3
     for p in colorY:
-        xi, yi = (np.abs(colX - p.x)).argmin().item(), (np.abs(colY - p.y)).argmin().item()
+        xi, yi = tb.findIdx(p.x, p.y)
         arr2[yi][xi] = 4
     for p in color5:
-        xi, yi = (np.abs(colX - p.x)).argmin().item(), (np.abs(colY - p.y)).argmin().item()
+        xi, yi = tb.findIdx(p.x, p.y)
         arr2[yi][xi] = 5
 
-    pprint(arr2)
+    # 观察二维数组，调用算法，得到可行的动作
+    print(arr2, flush=True)
+    actionArr = xxl_find_actions(arr2)
+    if len(actionArr) == 0:
+        T.log("not found any action")
+        return
 
-    canArr = xxl_find(arr2)
-    T.log("canArr %s", canArr)
-    (iy, ix), action, _ = canArr[0]
-    cx, cy = colX[ix], colY[iy]
+    T.log("actionArr[0] %s", actionArr[0])
+    (iy, ix), action, _ = actionArr[0]
+    cx, cy, cw, ch = tb.findRect(ix, iy)
+    cx, cy = cx + cw // 2, cy + ch // 2
+    cellW, cellH = tb.getCellSize()
 
+    # 根据东南西北 拖拽方块
     match action:
         case "N":
-            T.drag(points=[(cx, cy), (cx, int(cy - step))], unit="px", duration=0.5)
+            T.drag(points=[(cx, cy), (cx, int(cy - cellH))], unit="px", duration=0.5)
         case "E":
-            T.drag(points=[(cx, cy), (int(cx + step), cy)], unit="px", duration=0.5)
+            T.drag(points=[(cx, cy), (int(cx + cellW), cy)], unit="px", duration=0.5)
         case "S":
-            T.drag(points=[(cx, cy), (cx, int(cy + step))], unit="px", duration=0.5)
+            T.drag(points=[(cx, cy), (cx, int(cy + cellH))], unit="px", duration=0.5)
         case "W":
-            T.drag(points=[(cx, cy), (int(cx - step), cy)], unit="px", duration=0.5)
+            T.drag(points=[(cx, cy), (int(cx - cellW), cy)], unit="px", duration=0.5)
 
-    T.sleep(2)
-
-
-T.jobRegister(unname, cronjob="*", enable=True)
-
-
-def go_next(ctx):
-    T.clickByText(search="继续", crop={"unit": "%", "x": 26, "y": 48, "width": 54, "height": 25})
     T.sleep(1)
 
 
-T.jobRegister(go_next, cronjob="*", enable=True)
+T.jobRegister(do_move, cronjob="*", enable=True)
+
+
+def do_next(ctx):
+    T.clickByText(search="继续", crop={"unit": "%", "x": 26, "y": 48, "width": 54, "height": 25})
+    T.clickByText(search="开始", crop={"unit": "%", "x": 26, "y": 48, "width": 54, "height": 25})
+
+
+T.jobRegister(do_next, cronjob="*", enable=True)

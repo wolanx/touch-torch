@@ -1,10 +1,31 @@
 import random
 from pprint import pprint
 
+import cv2
 import numpy as np
 
 
-def xxl_find(arr2):
+def xxl_rec_rect(img0):
+    imgG = cv2.cvtColor(img0, cv2.COLOR_BGR2GRAY)
+    thBin = cv2.adaptiveThreshold(imgG, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 7, 0)
+    thBin = cv2.bitwise_not(thBin)
+    edges = cv2.Canny(thBin, 50, 150)
+
+    contours, _ = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+
+    ret = []
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        if w < 20 or h < 20 or np.abs(w - h) > 10 or w > 900 / 9 or w < (900 / 9) * 0.8:
+            continue
+
+        # cv2.rectangle(img0, (x, y), (x + w, y + h), (x % 200, y % 200, 222), 3)
+        ret.append((x, y, w, h))
+
+    return ret
+
+
+def xxl_find_actions(arr2):
     arr2 = np.array(arr2)
     xMax, yMax = arr2.shape
     ret = []
@@ -59,33 +80,3 @@ def xxl_check(arr2, pv, px, py, cx, cy):
                 return True, [(cx, cy), (nx1, ny1), (nx2, ny2)]
 
     return False, []
-
-
-# class TestXiaoXiaoLe(unittest.TestCase):
-#     def test_1(self):
-#         """
-#         (0, 1) S
-#         (0, 2) W
-#         (0, 4) E
-#         (0, 5) S
-#         (1, 1) E
-#         (1, 5) W
-#         (2, 2) E
-#         (2, 3) N
-#         (2, 4) W
-#         (5, 3) N
-#         """
-#         demo = [
-#             [0, 1, 4, 0, 4, 1, 0],
-#             [1, 4, 1, 3, 1, 4, 1],
-#             [1, 4, 4, 1, 4, 4, 1],
-#             [0, 1, 2, 3, 2, 1, 0],
-#             [0, 0, 1, 4, 1, 0, 0],
-#             [0, 0, 0, 1, 0, 0, 0],
-#         ]
-#         pprint(demo)
-
-#         for one in xxl_find(demo):
-#             # pprint(one)
-#             (iy, ix), action, _ = one
-#             print((iy, ix), action)
