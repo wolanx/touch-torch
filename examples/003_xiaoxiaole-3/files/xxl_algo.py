@@ -6,6 +6,7 @@ import numpy as np
 
 
 def xxl_rec_rect(img0):
+    img0 = np.array(img0)
     imgG = cv2.cvtColor(img0, cv2.COLOR_BGR2GRAY)
     thBin = cv2.adaptiveThreshold(imgG, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 7, 0)
     thBin = cv2.bitwise_not(thBin)
